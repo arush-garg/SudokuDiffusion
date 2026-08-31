@@ -15,7 +15,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from datasets import SudokuDataset
-from inference.llada import generate
 from utils import *
 
 
@@ -135,20 +134,19 @@ def load_adapter_weights(model, path):
     print(f"loaded {len(remapped)} LoRA tensors from {path}, missing={len(missing)}, unexpected={len(unexpected)}")
 
 
-def save_checkpoint(model, tokenizer, best_gen_pct, step):
+def save_checkpoint(model, tokenizer, step):
     checkpoint_dir = ROOT / "artifacts" / "checkpoints" / "illada-sudoku-lora"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(checkpoint_dir)
     tokenizer.save_pretrained(checkpoint_dir)
     f = open(checkpoint_dir / "training_meta.json", "w")
-    json.dump({"TARGET_CANVAS_LEN": 199, "best_gen_pct": best_gen_pct, "step": step, "model_name": "GSAI-ML/iLLaDA-8B-Base"}, f, indent=2)
+    json.dump({"TARGET_CANVAS_LEN": 199, "step": step, "model_name": "GSAI-ML/iLLaDA-8B-Base"}, f, indent=2)
     f.close()
 
 
-def train():
+if __name__ == "__main__":
     set_seed(42)
     print("TARGET_CANVAS_LEN=199")
-    print("device = cuda")
 
     model, tokenizer = load_model_and_tokenizer()
     train_ds = SudokuDataset(ROOT / "artifacts" / "data" / "train.jsonl")
@@ -173,7 +171,6 @@ def train():
 
     rng = random.Random(42)
     step = 0
-    best_gen = -math.inf
 
     if step == 0 and (checkpoint_dir / "adapter_model.safetensors").exists():
         print(f"warm starting adapter from {checkpoint_dir}")
@@ -217,15 +214,4 @@ def train():
 
     if not (checkpoint_dir / "adapter_model.safetensors").exists() and not (checkpoint_dir / "adapter_model.bin").exists():
         print("end save, no best yet")
-        save_checkpoint(model, tokenizer, best_gen, step)
-
-    print(f"Training complete. best_gen_pct_blank={best_gen:.1f}%")
-    del model
-    del tokenizer
-    print("Training memory freed")
-
-
-if __name__ == "__main__":
-    t0 = time.time()
-    train()
-    print(f"Wall time: {time.time() - t0:.1f}s")
+        save_checkpoint(model, tokenizer, step)

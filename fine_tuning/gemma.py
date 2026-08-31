@@ -149,52 +149,9 @@ def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-
-def run_gen_eval(model, tokenizer):
-    records = []
-    f = open(ROOT / "artifacts" / "data" / "val.jsonl")
-    for line in f:
-        rec = json.loads(line)
-        if float(rec.get("difficulty", 1.0)) < 0.7:
-            records.append(rec)
-        if len(records) == 10:
-            break
-    f.close()
-
-    model.eval()
-    correct = 0
-    total = 0
-    parsed = 0
-    with torch.no_grad():
-        for rec in records:
-            prompt = rec["prompt_text"]
-            blanks = get_blank_positions(prompt)
-            messages = [{"role": "user", "content": prompt}]
-            prompt_text = tokenizer.apply_chat_template(messages, tokenize=False)
-            inputs = tokenizer(prompt_text, return_tensors="pt").to("cuda")
-            out_ids = model.generate(
-                **inputs,
-                max_new_tokens=256,
-                do_sample=False,
-                pad_token_id=tokenizer.pad_token_id,
-            )
-            new_ids = out_ids[0][inputs["input_ids"].shape[1]:]
-            text = tokenizer.decode(new_ids, skip_special_tokens=True)
-            grid = parse_sudoku_string(text)
-            if grid is not None:
-                parsed += 1
-            score = score_prediction(grid, rec["grid_solution"], blanks)
-            correct += score["correct_blank"]
-            total += score["total_blank"]
-    model.train()
-
-    pct = round(correct / total * 100, 2) if total else 0.0
-    print(f"gen eval n={len(records)} parsed={parsed} pct_blank={pct:.1f}%")
-    return pct
-
-def train():
+if __name__ == "__main__":
     set_seed(42)
-
+    
     checkpoint_dir = ROOT / "artifacts" / "checkpoints" / "gemma-sudoku-lora"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
@@ -243,7 +200,7 @@ def train():
     model.train()
     step = 0
     micro_step = 0
-    best_gen = -math.inf
+    best_eval_loss = -math.inf
     best_step = -1
     t0 = time.time()
     running_loss = 0.0
@@ -282,15 +239,15 @@ def train():
                 if step % 32 == 0 or step == 5000:
                     eval_loss = evaluate(model, tokenizer, val_records)
                     print(f"eval step={step} eval_loss={eval_loss:.4f}")
-                    gen_pct = run_gen_eval(model, tokenizer)
-                    if gen_pct is not None and gen_pct > best_gen:
-                        best_gen = gen_pct
+
+                    if eval_loss < best_eval_loss:
+                        best_eval_loss = eval_loss
                         best_step = step
                         save_path = checkpoint_dir / "best"
                         save_path.mkdir(parents=True, exist_ok=True)
                         model.save_pretrained(save_path)
                         tokenizer.save_pretrained(save_path)
-                        print(f"saved best adapter to {save_path} gen pct_blank {gen_pct:.2f}%")
+                        print(f"saved best adapter to {save_path} eval_loss {eval_loss:.4f}")
 
     final_path = checkpoint_dir / "final"
     final_path.mkdir(parents=True, exist_ok=True)
@@ -298,11 +255,5 @@ def train():
     tokenizer.save_pretrained(final_path)
 
     f = open(checkpoint_dir / "run_summary.json", "w")
-    json.dump({"model_id": "google/gemma-4-12B-it", "max_steps": step, "best_step": best_step, "best_gen_pct_blank": best_gen}, f, indent=2)
+    json.dump({"model_id": "google/gemma-4-12B-it", "max_steps": step, "best_step": best_step, "best_eval_loss": best_eval_loss}, f, indent=2)
     f.close()
-    print(f"Done. Best gen pct_blank {best_gen:.2f}% at step {best_step}.")
-    print(f"Adapter -> {checkpoint_dir / 'best'}")
-
-
-if __name__ == "__main__":
-    train()

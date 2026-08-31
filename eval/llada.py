@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from inference.llada import generate, load_model_for_inference
-from utils import bucket_stats, get_blank_positions, parse_sudoku_string, score_prediction
+from utils import *
 
 
 def load_val_records(n, max_difficulty=None):

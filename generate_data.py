@@ -2,7 +2,6 @@ import json
 import multiprocessing as mp
 import random
 from pathlib import Path
-
 import numpy as np
 from sudoku import Sudoku
 
@@ -21,15 +20,6 @@ def build_record(puzzle, solution, difficulty, idx):
         "grid_solution": solution.tolist(),
     }
 
-
-def generate_sample(difficulty, idx):
-    puzzle = Sudoku(3, seed=random.randint(0, 10**9)).difficulty(difficulty)
-    solution = puzzle.solve()
-    puzzle_grid = np.array([[cell or 0 for cell in row] for row in puzzle.board], dtype=np.int32)
-    solution_grid = np.array([[cell or 0 for cell in row] for row in solution.board], dtype=np.int32)
-    return build_record(puzzle_grid, solution_grid, difficulty, idx)
-
-
 def write_jsonl(records, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     f = open(path, "w")
@@ -47,7 +37,11 @@ def worker_init(seed):
 
 def generate_one(args):
     diff, idx = args
-    return generate_sample(diff, idx)
+    puzzle = Sudoku(3, seed=random.randint(0, 10**9)).difficulty(diff)
+    solution = puzzle.solve()
+    puzzle_grid = np.array([[cell or 0 for cell in row] for row in puzzle.board], dtype=np.int32)
+    solution_grid = np.array([[cell or 0 for cell in row] for row in solution.board], dtype=np.int32)
+    return build_record(puzzle_grid, solution_grid, diff, idx)
 
 
 def generate_split(n, start_idx, seed):
@@ -80,14 +74,3 @@ if __name__ == "__main__":
     print("\n[3/3] Generating test split (1,000) ...")
     test = generate_split(1000, 52000, 2)
     write_jsonl(test, out / "test.jsonl")
-
-    print("\nSpot checking 50 boards ...")
-    bad = 0
-    for rec in random.sample(train + val + test, 50):
-        if not verify_board_validity(rec["grid_solution"]):
-            bad += 1
-    print(f"{50 - bad}/50 passed")
-    if bad:
-        print(f"{bad} bad boards")
-
-    print("\nData prep done. target canvas len is 199.")

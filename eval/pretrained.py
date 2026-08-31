@@ -105,7 +105,6 @@ def evaluate_model(samples):
 
         per_sample.append({
             "id": rec["id"],
-            "model": "groq/llama-3.3-70b-versatile",
             "difficulty": difficulty,
             "pred_text": pred_text,
             "exact_match": scores["exact_match"],
@@ -148,7 +147,6 @@ def evaluate_model(samples):
 
     metrics = compute_metrics(pred_grids, true_grids, blank_sets)
     return {
-        "model": "groq/llama-3.3-70b-versatile",
         "n_samples": len(samples),
         "exact_match_acc": metrics["exact_match_acc"],
         "cell_level_acc": metrics["cell_level_acc"],
@@ -183,7 +181,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 78)
     print("Groq Sudoku Eval - Summary")
     print("=" * 78)
-    print(f"{report['model']:<32} n={report['n_samples']} pct_all={report['pct_all']:.2f}% pct_blank={report['pct_blank']:.2f}%")
+    print(f"n={report['n_samples']} pct_all={report['pct_all']:.2f}% pct_blank={report['pct_blank']:.2f}%")
     print(f"exact={report['exact_match_acc']:.3f} valid={report['valid_board_acc']:.3f} parse={report['parse_rate']:.3f} avg_lat={report['avg_latency_s']:.2f}s")
     print(f"\n{'bucket':<12} {'n':>4} {'pct_all':>9} {'pct_blank':>10}")
     for bucket, b in report["difficulty_buckets"].items():

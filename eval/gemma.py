@@ -2,15 +2,13 @@ import json
 import sys
 import time
 from pathlib import Path
-
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from inference.gemma import run_inference
-from utils import compute_metrics, get_blank_positions, parse_sudoku_string, score_prediction, verify_board_validity
-
+from utils import *
 
 def load_jsonl(path, limit=None):
     records = []
@@ -84,7 +82,6 @@ def evaluate(records):
     samples_f.close()
     metrics = compute_metrics(pred_grids, true_grids, blank_sets)
     summary = {
-        "model": "google/gemma-4-12B-it",
         "n_samples": len(records),
         "exact_match_acc": metrics["exact_match_acc"],
         "cell_level_acc": metrics["cell_level_acc"],
@@ -108,8 +105,6 @@ def evaluate(records):
 if __name__ == "__main__":
     print("=" * 60)
     print("SudokuDiffusion - Gemma eval")
-    print("device = mps")
-    print("checkpoint = artifacts/checkpoints/gemma-sudoku-lora/best")
     print("=" * 60)
     records = load_jsonl(ROOT / "artifacts" / "data" / "val.jsonl", limit=100)
     summary = evaluate(records)
