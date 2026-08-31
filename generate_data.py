@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from sudoku import Sudoku
 
-from utils import format_sudoku_string, verify_board_validity
+from utils import format_sudoku_string
 
 
 ROOT = Path(__file__).resolve().parent
