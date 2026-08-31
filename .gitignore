@@ -1,0 +1,6 @@
+__pycache__
+artifacts/
+.env
+memory/
+scratchpad/
+.DS_Store
